@@ -1,0 +1,65 @@
+ARG base_image=rocm/pytorch:latest
+
+FROM $base_image
+
+ARG work_dir=/hunyuanvideo
+
+# SSH (insecure, for development use)
+# add docker build argument: --build-arg ssh_pub_key="$(cat ~/.ssh/id_rsa.pub)" --build-arg ssh_prv_key="$(cat ~/.ssh/id_rsa)"
+ARG ssh_pub_key
+ARG ssh_prv_key
+RUN mkdir -p /root/.ssh && \
+    chmod 0700 /root/.ssh
+RUN ssh-keyscan github.com >> /root/.ssh/known_hosts
+RUN echo "    IdentityFile ~/.ssh/id_rsa" >> /etc/ssh/ssh_config
+RUN echo "$ssh_prv_key" > /root/.ssh/id_rsa && \
+    echo "$ssh_pub_key" > /root/.ssh/id_rsa.pub && \
+    chmod 600 /root/.ssh/id_rsa && \
+    chmod 600 /root/.ssh/id_rsa.pub
+
+WORKDIR $work_dir
+
+RUN pip install "huggingface_hub[cli]"
+
+# hyv repository
+RUN git clone git@github.com:Tencent/HunyuanVideo.git && \
+    pip install -r HunyuanVideo/requirements.txt
+
+# hyv model
+RUN cd HunyuanVideo && \
+    huggingface-cli download tencent/HunyuanVideo --local-dir ./ckpts
+
+# MLLM
+ARG mllm_name=llava-llama-3-8b-v1_1-transformers
+RUN cd HunyuanVideo/ckpts && \
+    huggingface-cli download xtuner/$mllm_name --local-dir ./$mllm_name
+#    cd .. && \
+#    python hyvideo/utils/preprocess_text_encoder_tokenizer_utils.py --input_dir ckpts/$mllm_name --output_dir ckpts/text_encoder
+
+# CLIP
+RUN cd HunyuanVideo/ckpts && \
+    huggingface-cli download openai/clip-vit-large-patch14 --local-dir ./text_encoder_2
+
+# flash attn
+ARG FA_SHA="22c0358"
+ARG FA_REPO="https://github.com/ROCm/flash-attention.git"
+ARG PYTORCH_ROCM_ARCH="gfx942"
+RUN git clone ${FA_REPO} && \
+    cd flash-attention && \
+    git checkout ${FA_SHA} && \
+    git submodule update --init && \
+    GPU_ARCHS=${PYTORCH_ROCM_ARCH} python3 setup.py bdist_wheel --dist-dir=dist && \
+    pip install -f dist/*.whl;
+
+# Triton
+RUN pip install --no-deps pybind11
+ARG TRITON_REPO="https://github.com/triton-lang/triton.git"
+ARG TRITON_BRANCH="main"
+RUN git clone ${TRITON_REPO} && \
+    cd triton && \
+    git checkout ${TRITON_BRANCH} && \
+    cd python && \
+    python3 setup.py bdist_wheel --dist-dir=dist && \
+    pip install --force-reinstall dist/*.whl;
+
+COPY ./startup.sh .
