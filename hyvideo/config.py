@@ -48,6 +48,12 @@ def add_network_args(parser: argparse.ArgumentParser):
     group.add_argument(
         "--rope-theta", type=int, default=256, help="Theta used in RoPE."
     )
+
+    # Profiling
+    group.add_argument(
+        "--profiling", type=str, default=None, metavar="STRING", help="Profiling options."
+    )
+
     return parser
 
 

@@ -7,7 +7,7 @@ from datetime import datetime
 from hyvideo.utils.file_utils import save_videos_grid
 from hyvideo.config import parse_args
 from hyvideo.inference import HunyuanVideoSampler
-
+from profiling.rpd_handler import *
 
 def main():
     args = parse_args()
@@ -27,6 +27,12 @@ def main():
     # Get the updated args
     args = hunyuan_video_sampler.args
 
+    # profiling
+    output_type = "latent" if args.profiling == "diffusion" else "pil"
+    if args.profiling == "diffusion" or args.profiling == "vae":
+        profiler = HipTx()
+        profiler.start_profiling()
+
     # Start sampling
     # TODO: batch inference check
     outputs = hunyuan_video_sampler.predict(
@@ -41,18 +47,27 @@ def main():
         num_videos_per_prompt=args.num_videos,
         flow_shift=args.flow_shift,
         batch_size=args.batch_size,
-        embedded_guidance_scale=args.embedded_cfg_scale
+        embedded_guidance_scale=args.embedded_cfg_scale,
+        output_type=output_type
     )
+
+    # profiling
+    if args.profiling == "diffusion" or args.profiling == "vae":
+        profiler.stop_profiling()
+
     samples = outputs['samples']
     
     # Save samples
     if 'LOCAL_RANK' not in os.environ or int(os.environ['LOCAL_RANK']) == 0:
         for i, sample in enumerate(samples):
+            print("before unsqueeze")
             sample = samples[i].unsqueeze(0)
+            print("after unsqueeze")
             time_flag = datetime.fromtimestamp(time.time()).strftime("%Y-%m-%d-%H:%M:%S")
             save_path = f"{save_path}/{time_flag}_seed{outputs['seeds'][i]}_{outputs['prompts'][i][:100].replace('/','')}.mp4"
-            save_videos_grid(sample, save_path, fps=24)
-            logger.info(f'Sample save to: {save_path}')
+            if args.profiling != "diffusion":
+                save_videos_grid(sample, save_path, fps=24)
+                logger.info(f'Sample save to: {save_path}')
 
 if __name__ == "__main__":
     main()
