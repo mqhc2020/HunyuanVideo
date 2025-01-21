@@ -1,0 +1,41 @@
+ARG base_image=hunyuanvideo/hunyuanvideo:cuda_12
+
+FROM $base_image
+
+ARG work_dir=/hunyuanvideo
+
+# SSH (insecure, for development use)
+# add docker build argument: --build-arg ssh_pub_key="$(cat ~/.ssh/id_rsa.pub)" --build-arg ssh_prv_key="$(cat ~/.ssh/id_rsa)"
+ARG ssh_pub_key
+ARG ssh_prv_key
+RUN mkdir -p /root/.ssh && \
+    chmod 0700 /root/.ssh
+RUN ssh-keyscan github.com >> /root/.ssh/known_hosts
+RUN echo "    IdentityFile ~/.ssh/id_rsa" >> /etc/ssh/ssh_config
+RUN echo "$ssh_prv_key" > /root/.ssh/id_rsa && \
+    echo "$ssh_pub_key" > /root/.ssh/id_rsa.pub && \
+    chmod 600 /root/.ssh/id_rsa && \
+    chmod 600 /root/.ssh/id_rsa.pub
+
+WORKDIR $work_dir
+
+RUN pip install "huggingface_hub[cli]"
+
+# hyv repository
+RUN git clone git@github.com:Tencent/HunyuanVideo.git && \
+    pip install -r HunyuanVideo/requirements.txt
+
+# hyv model
+RUN cd HunyuanVideo && \
+    huggingface-cli download tencent/HunyuanVideo --local-dir ./ckpts
+
+# MLLM
+ARG mllm_name=llava-llama-3-8b-v1_1-transformers
+RUN cd HunyuanVideo/ckpts && \
+    huggingface-cli download xtuner/$mllm_name --local-dir ./$mllm_name
+
+# CLIP
+RUN cd HunyuanVideo/ckpts && \
+    huggingface-cli download openai/clip-vit-large-patch14 --local-dir ./text_encoder_2
+
+COPY ./startup.sh .
