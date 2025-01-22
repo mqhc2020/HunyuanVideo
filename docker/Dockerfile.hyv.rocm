@@ -20,6 +20,7 @@ RUN echo "$ssh_prv_key" > /root/.ssh/id_rsa && \
 WORKDIR $work_dir
 
 RUN pip install "huggingface_hub[cli]"
+RUN pip install --no-deps xfuser==0.4.0 distvae yunchang==0.5.0
 
 # hyv repository
 RUN git clone git@github.com:Tencent/HunyuanVideo.git && \
