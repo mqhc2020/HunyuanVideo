@@ -27,7 +27,7 @@
 </div>
 
 <p align="center">
-    👋 Join our <a href="assets/WECHAT.md" target="_blank">WeChat</a> and <a href="https://discord.gg/WrurN5JXcm" target="_blank">Discord</a> 
+    👋 Join our <a href="assets/WECHAT.md" target="_blank">WeChat</a> and <a href="https://discord.gg/tv7FkG4Nwf" target="_blank">Discord</a> 
 </p>
 <p align="center">
 
@@ -490,9 +490,7 @@ We would like to thank the contributors to the [SD3](https://huggingface.co/stab
 Additionally, we also thank the Tencent Hunyuan Multimodal team for their help with the text encoder. 
 
 
-
-## Star History
-
+## Github Star History
 <a href="https://star-history.com/#Tencent/HunyuanVideo&Date">
  <picture>
    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=Tencent/HunyuanVideo&type=Date&theme=dark" />
