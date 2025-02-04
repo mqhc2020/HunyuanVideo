@@ -49,7 +49,7 @@ RUN git clone ${FA_REPO} && \
     cd flash-attention && \
     git checkout ${FA_SHA} && \
     git submodule update --init && \
-    GPU_ARCHS=${PYTORCH_ROCM_ARCH} python3 setup.py bdist_wheel --dist-dir=dist && \
+    MAX_JOBS=64 GPU_ARCHS=${PYTORCH_ROCM_ARCH} python3 setup.py bdist_wheel --dist-dir=dist && \
     pip install -f dist/*.whl;
 
 # Triton
@@ -62,5 +62,14 @@ RUN git clone ${TRITON_REPO} && \
     cd python && \
     python3 setup.py bdist_wheel --dist-dir=dist && \
     pip install --force-reinstall dist/*.whl;
+
+# RPD profiling
+RUN apt update && \
+    apt install -y sqlite3 libsqlite3-dev libfmt-dev
+RUN git clone https://github.com/ROCmSoftwarePlatform/rocmProfileData && \
+    cd rocmProfileData && \
+    make && make install && \
+    cd rocpd_python && python setup.py install && cd .. && \
+    cd rpd_tracer && python setup.py install && cd ..
 
 COPY ./startup.sh .
